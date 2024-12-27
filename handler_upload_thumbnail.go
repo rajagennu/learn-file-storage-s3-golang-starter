@@ -84,12 +84,18 @@ func (cfg *apiConfig) handlerUploadThumbnail(w http.ResponseWriter, r *http.Requ
 		return
 	}
 	defer create.Close()
-	_, err = create.Write(imageInBytes)
+	//_, err = create.Write(imageInBytes)
+	//if err != nil {
+	//	respondWithError(w, http.StatusBadRequest, "error with copy", err)
+	//	return
+	//}
+
+	_, err = file.Seek(0, io.SeekStart)
+	_, err = io.Copy(create, file)
 	if err != nil {
 		respondWithError(w, http.StatusBadRequest, "error with copy", err)
 		return
 	}
-
 	url := "http://localhost:" + os.Getenv("PORT") + "/assets/" + videoIDString + "." + imageExtention
 	videoMetaData.ThumbnailURL = &url
 	newVideoStruct := cfg.db.UpdateVideo(videoMetaData)
