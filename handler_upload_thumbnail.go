@@ -79,5 +79,4 @@ func (cfg *apiConfig) handlerUploadThumbnail(w http.ResponseWriter, r *http.Requ
 	videoMetaData.ThumbnailURL = &url
 	newVideoStruct := cfg.db.UpdateVideo(videoMetaData)
 	respondWithJSON(w, http.StatusOK, newVideoStruct)
-
 }
