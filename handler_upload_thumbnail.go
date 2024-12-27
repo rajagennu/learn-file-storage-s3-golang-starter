@@ -2,7 +2,9 @@ package main
 
 import (
 	"fmt"
+	"io"
 	"net/http"
+	"os"
 
 	"github.com/bootdotdev/learn-file-storage-s3-golang-starter/internal/auth"
 	"github.com/google/uuid"
@@ -10,7 +12,7 @@ import (
 
 func (cfg *apiConfig) handlerUploadThumbnail(w http.ResponseWriter, r *http.Request) {
 	const maxMemory = 10 << 20
-	
+
 	videoIDString := r.PathValue("videoID")
 	videoID, err := uuid.Parse(videoIDString)
 	if err != nil {
@@ -30,11 +32,14 @@ func (cfg *apiConfig) handlerUploadThumbnail(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-
 	fmt.Println("uploading thumbnail for video", videoID, "by user", userID)
 
 	// TODO: implement the upload here
-        r.ParseMultiplepartForm(maxMemory)
+	err = r.ParseMultipartForm(maxMemory)
+	if err != nil {
+		respondWithError(w, http.StatusUnauthorized, "Unable to parse using ParseMultipartForm", err)
+		return
+	}
 	file, header, err := r.FormFile("thumbnail")
 	if err != nil {
 		respondWithError(w, http.StatusBadRequest, "Unable to parse form file", err)
@@ -42,12 +47,20 @@ func (cfg *apiConfig) handlerUploadThumbnail(w http.ResponseWriter, r *http.Requ
 	}
 
 	defer file.Close()
-	fileContentHeader := header.Get("Content-Type")
+	fileContentHeader := header.Header.Get("Content-Type")
 	imageInBytes, err := io.ReadAll(file)
 	if err != nil {
 		respondWithError(w, http.StatusBadRequest, "unable to read form file", err)
 		return
 	}
+	videoMetaData, _ := cfg.db.GetVideo(videoID)
+	newThumbnail := thumbnail{data: imageInBytes, mediaType: fileContentHeader}
+	videoThumbnails[videoID] = newThumbnail
 
-	respondWithJSON(w, http.StatusOK, struct{}{})
+	//fmt.Println(fileContentHeader, imageInBytes)
+	url := "localhost:" + os.Getenv("PORT") + "/app/thumbnails/" + videoIDString
+	videoMetaData.ThumbnailURL = &url
+	newVideoStruct := cfg.db.UpdateVideo(videoMetaData)
+	respondWithJSON(w, http.StatusOK, newVideoStruct)
+
 }
