@@ -51,6 +51,19 @@ func (cfg *apiConfig) handlerUploadThumbnail(w http.ResponseWriter, r *http.Requ
 	defer file.Close()
 	fileContentHeader := header.Header.Get("Content-Type")
 	fmt.Println(fileContentHeader)
+	acceptedImageForamts := []string{"image/jpeg", "image/png"}
+	validImageFormat := false
+	for _, value := range acceptedImageForamts {
+		if strings.Contains(fileContentHeader, value) {
+			validImageFormat = true
+			break
+		}
+	}
+	if !validImageFormat {
+		respondWithError(w, http.StatusBadRequest, "Expected image/jpeg, or image/png. Got "+fileContentHeader, err)
+		return
+	}
+
 	imageExtention := strings.Split(fileContentHeader, "/")[1]
 	imageInBytes, err := io.ReadAll(file)
 	if err != nil {
@@ -70,11 +83,13 @@ func (cfg *apiConfig) handlerUploadThumbnail(w http.ResponseWriter, r *http.Requ
 		respondWithError(w, http.StatusBadRequest, "unable to create file", err)
 		return
 	}
-	_, err = io.Copy(create, file)
+	defer create.Close()
+	_, err = create.Write(imageInBytes)
 	if err != nil {
 		respondWithError(w, http.StatusBadRequest, "error with copy", err)
 		return
 	}
+
 	url := "http://localhost:" + os.Getenv("PORT") + "/assets/" + videoIDString + "." + imageExtention
 	videoMetaData.ThumbnailURL = &url
 	newVideoStruct := cfg.db.UpdateVideo(videoMetaData)
