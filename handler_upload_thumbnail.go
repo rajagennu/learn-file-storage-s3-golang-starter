@@ -1,6 +1,8 @@
 package main
 
 import (
+	"crypto/rand"
+	"encoding/base64"
 	"fmt"
 	"io"
 	"net/http"
@@ -14,7 +16,9 @@ import (
 
 func (cfg *apiConfig) handlerUploadThumbnail(w http.ResponseWriter, r *http.Request) {
 	const maxMemory = 10 << 20
-
+	cryptRandVideoId := make([]byte, 32)
+	_, err := rand.Read(cryptRandVideoId)
+	randomFileName := base64.RawURLEncoding.EncodeToString(cryptRandVideoId)
 	videoIDString := r.PathValue("videoID")
 	videoID, err := uuid.Parse(videoIDString)
 	if err != nil {
@@ -77,7 +81,7 @@ func (cfg *apiConfig) handlerUploadThumbnail(w http.ResponseWriter, r *http.Requ
 	//fmt.Println(fileContentHeader, imageInBytes)
 	//url := "localhost:" + os.Getenv("PORT") + "/app/thumbnails/" + videoIDString
 	//videoMetaData.ThumbnailURL = &url
-	assetPath := filepath.Join(cfg.assetsRoot, videoID.String()+"."+imageExtention)
+	assetPath := filepath.Join(cfg.assetsRoot, randomFileName+"."+imageExtention)
 	create, err := os.Create(assetPath)
 	if err != nil {
 		respondWithError(w, http.StatusBadRequest, "unable to create file", err)
@@ -96,7 +100,7 @@ func (cfg *apiConfig) handlerUploadThumbnail(w http.ResponseWriter, r *http.Requ
 		respondWithError(w, http.StatusBadRequest, "error with copy", err)
 		return
 	}
-	url := "http://localhost:" + os.Getenv("PORT") + "/assets/" + videoIDString + "." + imageExtention
+	url := "http://localhost:" + os.Getenv("PORT") + "/assets/" + randomFileName + "." + imageExtention
 	videoMetaData.ThumbnailURL = &url
 	newVideoStruct := cfg.db.UpdateVideo(videoMetaData)
 	respondWithJSON(w, http.StatusOK, newVideoStruct)

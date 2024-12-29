@@ -227,7 +227,8 @@ function viewVideo(video) {
     thumbnailImg.style.display = "none";
   } else {
     thumbnailImg.style.display = "block";
-    thumbnailImg.src = video.thumbnail_url;
+    var newURL = `${video.thumbnail_url}`
+    thumbnailImg.src = newURL;
   }
 
   const downloadButton = document.getElementById("download-button");
