@@ -7,7 +7,7 @@ import (
 	"time"
 )
 
-func (cfg *apiConfig) dbVideoToSignedVideo(video database.Video) (database.Video, error) {
+func (cfg *apiConfig) dbVideoToSignedVideo2(video database.Video) (database.Video, error) {
 	log.Println("Converting video to signed video" + *video.VideoURL)
 	bucket := strings.Split(*video.VideoURL, ",")[0]
 	key := strings.Split(*video.VideoURL, ",")[1]

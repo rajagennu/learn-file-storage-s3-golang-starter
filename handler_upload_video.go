@@ -9,8 +9,10 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/bootdotdev/learn-file-storage-s3-golang-starter/internal/auth"
+	"github.com/bootdotdev/learn-file-storage-s3-golang-starter/internal/database"
 	"github.com/google/uuid"
 	"io"
+	"log"
 	"net/http"
 	"os"
 	"os/exec"
@@ -124,10 +126,16 @@ func (cfg *apiConfig) handlerUploadVideo(w http.ResponseWriter, r *http.Request)
 		respondWithError(w, http.StatusBadRequest, "error while closing the temp file.", err)
 		return
 	}
-	videoURL := fmt.Sprintf("https://%s.s3.%s.amazonaws.com/%s", os.Getenv("S3_BUCKET"), os.Getenv("S3_REGION"), randomFileName+".mp4")
+	videoURL := fmt.Sprintf("%s,%s", os.Getenv("S3_BUCKET"), randomFileName+".mp4")
 	videoMetaData.VideoURL = &videoURL
-	newVideoStruct := cfg.db.UpdateVideo(videoMetaData)
-	respondWithJSON(w, http.StatusOK, newVideoStruct)
+	err = cfg.db.UpdateVideo(videoMetaData)
+	preSignedURL, err := cfg.dbVideoToSignedVideo(videoMetaData)
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, "error while uploading video", err)
+		return
+	}
+
+	respondWithJSON(w, http.StatusOK, preSignedURL)
 }
 
 func getMode(aspectRatio string) string {
@@ -160,9 +168,28 @@ func generatePresignedURL(s3Client *s3.Client, bucket, key string, expireTime ti
 		Bucket: aws.String(bucket),
 		Key:    aws.String(key),
 	},
-		s3.WithPresignExpires(time.Minute*15))
+		s3.WithPresignExpires(expireTime))
 	if err != nil {
 		return "", err
 	}
 	return preSignedURL.URL, nil
+}
+
+func (cfg *apiConfig) dbVideoToSignedVideo(video database.Video) (database.Video, error) {
+	if video.VideoURL == nil {
+		return video, nil
+	}
+	parts := strings.Split(*video.VideoURL, ",")
+	if len(parts) < 2 {
+		return video, nil
+	}
+	log.Println("Converting video to signed video" + *video.VideoURL)
+	bucket := strings.Split(*video.VideoURL, ",")[0]
+	key := strings.Split(*video.VideoURL, ",")[1]
+	preSignedURL, err := generatePresignedURL(cfg.s3Client, bucket, key, time.Minute*15)
+	if err != nil {
+		return database.Video{}, err
+	}
+	video.VideoURL = &preSignedURL
+	return video, nil
 }
