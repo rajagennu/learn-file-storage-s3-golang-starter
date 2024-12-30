@@ -16,6 +16,7 @@ import (
 	"os/exec"
 	"strconv"
 	"strings"
+	"time"
 )
 
 func (cfg *apiConfig) handlerUploadVideo(w http.ResponseWriter, r *http.Request) {
@@ -151,4 +152,17 @@ func processVideoForFastStart(filePath string) (string, error) {
 		return "", err
 	}
 	return newFilePath, nil
+}
+
+func generatePresignedURL(s3Client *s3.Client, bucket, key string, expireTime time.Duration) (string, error) {
+	preSignOption := s3.NewPresignClient(s3Client)
+	preSignedURL, err := preSignOption.PresignGetObject(context.Background(), &s3.GetObjectInput{
+		Bucket: aws.String(bucket),
+		Key:    aws.String(key),
+	},
+		s3.WithPresignExpires(time.Minute*15))
+	if err != nil {
+		return "", err
+	}
+	return preSignedURL.URL, nil
 }
