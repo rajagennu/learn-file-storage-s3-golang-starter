@@ -126,16 +126,17 @@ func (cfg *apiConfig) handlerUploadVideo(w http.ResponseWriter, r *http.Request)
 		respondWithError(w, http.StatusBadRequest, "error while closing the temp file.", err)
 		return
 	}
-	videoURL := fmt.Sprintf("%s,%s", os.Getenv("S3_BUCKET"), randomFileName+".mp4")
+	videoURL := fmt.Sprintf("https://%s/%s", cfg.s3CfDistribution, randomFileName+".mp4")
+	//https://d3mfdc4yt332y0.cloudfront.net/portrait/DrCZCGszmLeC_BdDX6d9oPhjnFmQFud-hsRmYg6Az1A.mp4
 	videoMetaData.VideoURL = &videoURL
 	err = cfg.db.UpdateVideo(videoMetaData)
-	preSignedURL, err := cfg.dbVideoToSignedVideo(videoMetaData)
-	if err != nil {
-		respondWithError(w, http.StatusInternalServerError, "error while uploading video", err)
-		return
-	}
+	//preSignedURL, err := cfg.dbVideoToSignedVideo(videoMetaData)
+	//if err != nil {
+	//	respondWithError(w, http.StatusInternalServerError, "error while uploading video", err)
+	//	return
+	//}
 
-	respondWithJSON(w, http.StatusOK, preSignedURL)
+	respondWithJSON(w, http.StatusOK, videoMetaData)
 }
 
 func getMode(aspectRatio string) string {
